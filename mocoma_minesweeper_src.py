@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections import namedtuple
 from random import randint
 
-class IO_Controller(ABC):
+class MinesweeperIO(ABC):
     """Parent class for those who controls IO
 
     This provides a default interface so swapping
@@ -46,7 +46,7 @@ class IO_Controller(ABC):
         pass
 
 
-class Console_IO(IO_Controller):
+class ConsoleIO(MinesweeperIO):
     """Provides a minesweeper inyterface for cmd
     See IO_Controller for more details
     """
@@ -87,7 +87,7 @@ class Console_IO(IO_Controller):
                 return ("flag" if action == "M" else "show", coords)
 
 
-class Minesweeper_Grid(object):
+class MinesweeperGrid(object):
     """Provides support for storing a mine grid
 
     Also provides several methods to manipulate it and a classmethod
