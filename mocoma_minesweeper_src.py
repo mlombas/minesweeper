@@ -237,6 +237,9 @@ class MinesweeperGrid(object):
     def is_win(self):
         return all([(cell.has_mine and cell.state == "flagged") or not cell.has_mine
                         for cell in self._cells])
+
+    def ended(self):
+        return self.is_loss() or self.is_win()
     
     def n_mines_around(self, x, y):
         count = 0
