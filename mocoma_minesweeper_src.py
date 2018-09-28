@@ -170,7 +170,7 @@ class MinesweeperGrid(object):
         new_c = self.Cell(True, c.state)
         self.set_cell(x, y, new_c)
 
-    def discover_cell(self, x, y):
+    def show_cell(self, x, y):
         """Shows a cell, this is its state changes to "shown"
 
         Input:
@@ -208,3 +208,6 @@ class MinesweeperGrid(object):
         c = self.get_cell(x, y)
         new_c = self.Cell(c.has_bomb, "hidden")
         self.set_cell(x, y, new_c)
+
+    def is_loss(self):
+        return any(self._cells, lambda c: c.has_mine and c.state == "shown"
