@@ -56,14 +56,18 @@ class ConsoleIO(MinesweeperIO):
         for y in range(grid.height):
             line = ""
             for x in range(grid.width):
-                bomb_c, hidden_c, flagged_c, empty_c = "B", "■", "!", "□"
+                mine_c, hidden_c, flagged_c, empty_c = "M", "■", "!", "□"
                 cell = grid.get_cell(x, y)
                 if cell.state == "hidden":
                     line += hidden_c
                 elif cell.state == "flagged":
                     line += flagged_c
                 elif cell.state == "shown":
-                    line += bomb_c if cell.has_bomb else empty_c
+                    if cell.has_mine:
+                        line += mine_c
+                    else:
+                        n_around = grid.n_mines_around(x, y)
+                        line += str(n_around) if n_around else empty_c
 
                 line += " "
 
@@ -77,7 +81,7 @@ class ConsoleIO(MinesweeperIO):
         while True:
             action, coords = input().split() #TODO prevent user from introducing only one value 
             try:
-                coords = (int(c) for c in coords.split(","))
+                coords = (int(c) - 1 for c in coords.split(","))
             except:
                 print("Ha introducido unas coordenadas no validas, por favor intentelo de nuevo")
 
@@ -86,6 +90,11 @@ class ConsoleIO(MinesweeperIO):
             else:
                 return ("flag" if action == "M" else "show", coords)
 
+    def print_end(self, won=False):
+        if won:
+            print("You won motherfucker")
+        else:
+            print("You lost pussy")
 
 class MinesweeperGrid(object):
     """Provides support for storing a mine grid
@@ -99,7 +108,7 @@ class MinesweeperGrid(object):
     """
 
     _cells = []
-    Cell = namedtuple("Cell", ("has_bomb", "state"))
+    Cell = namedtuple("Cell", ("has_mine", "state"))
 
     def __init__(self, width, height):
         self.width = width
@@ -107,7 +116,7 @@ class MinesweeperGrid(object):
         self._cells = [self.Cell(False, "hidden")] * (width * height)
 
     @classmethod
-    def gen_random(cls, width, height, n_bombs):
+    def gen_random(cls, width, height, n_mines):
         """Creates a grid with mines in random positions
 
         Input:
@@ -122,15 +131,18 @@ class MinesweeperGrid(object):
             return (randint(0, width - 1), randint(0, height - 1))
         
         grid = cls(width, height)
-        while n_bombs:
+        while n_mines:
             x, y = get_random_point()
-            while grid.get_cell(x, y).has_bomb:
+            while grid.get_cell(x, y).has_mine:
                 x, y = get_random_point()
 
             grid.put_mine(x, y)
-            n_bombs -= 1
+            n_mines -= 1
 
         return grid
+
+    def coords_in_grid(self, x, y):
+        return x >= 0 and x < self.width and y >= 0 and y < self.height
             
     
     def get_cell(self, x, y):
@@ -180,8 +192,18 @@ class MinesweeperGrid(object):
         Output: None
         """
         c = self.get_cell(x, y)
-        new_c = self.Cell(c.has_bomb, "shown")
+        new_c = self.Cell(c.has_mine, "shown")
         self.set_cell(x, y, new_c)
+
+    def show_empty_cells(self, x, y):
+        self.show_cell(x, y)
+        n_around = self.n_mines_around(x, y)
+        if n_around == 0:
+            self.show_cell(x, y)
+            coords_around = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+            for coord in coords_around:
+                if self.coords_in_grid(*coord) and self.get_cell(*coord).state == "hidden":
+                    self.show_empty_cells(*coord)
 
     def flag_cell(self, x, y):
         """Flags a cell, this is its state changes to "flagged"
@@ -193,7 +215,7 @@ class MinesweeperGrid(object):
         Output: None
         """
         c = self.get_cell(x, y)
-        new_c = self.Cell(c.has_bomb, "flagged")
+        new_c = self.Cell(c.has_mine, "flagged")
         self.set_cell(x, y, new_c)
 
     def hide_cell(self, x, y):
@@ -206,8 +228,21 @@ class MinesweeperGrid(object):
         Output: None
         """
         c = self.get_cell(x, y)
-        new_c = self.Cell(c.has_bomb, "hidden")
+        new_c = self.Cell(c.has_mine, "hidden")
         self.set_cell(x, y, new_c)
 
     def is_loss(self):
-        return any(self._cells, lambda c: c.has_mine and c.state == "shown"
+        return any([cell.has_mine and cell.state == "shown" for cell in self._cells])
+
+    def is_win(self):
+        return all([(cell.has_mine and cell.state == "flagged") or not cell.has_mine
+                        for cell in self._cells])
+    
+    def n_mines_around(self, x, y):
+        count = 0
+        for dx in range(max(0, x - 1), min(x + 2, self.width)):
+            for dy in range(max(0, y - 1), min(y + 2, self.height)):
+                if (dx != x or dy != y) and self.get_cell(dx, dy).has_mine:
+                    count += 1
+
+        return count
