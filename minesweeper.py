@@ -11,4 +11,4 @@ while not grid.ended():
         grid.show_empty_cells(*coords)
 
 io.show_grid(grid)
-io.print_end(won=grid.is_win())
+io.print_end(grid.is_win())
