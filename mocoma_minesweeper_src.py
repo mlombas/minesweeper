@@ -19,6 +19,16 @@ class MinesweeperIO(ABC):
     """
 
     @abstractmethod
+    def print_end(self, won=False):
+        """Prints to the player something to mark the end of the game
+
+        Input:
+            won - A boolean checking wether the game was won or not
+
+        Output: None
+        """
+
+    @abstractmethod
     def show_grid(self, grid):
         """Shows the grid to the viewing port
 
@@ -141,7 +151,16 @@ class MinesweeperGrid(object):
 
         return grid
 
-    def coords_in_grid(self, x, y):
+    def coords_are_valid(self, x, y):
+        """Checks wether a pair of coordinates is in the grid or not
+
+        Input:
+            x - The x coordinate
+            y - The y coordinate
+
+        Output:
+            True if coords are valid, False otherwise
+        """
         return x >= 0 and x < self.width and y >= 0 and y < self.height
             
     
@@ -195,15 +214,23 @@ class MinesweeperGrid(object):
         new_c = self.Cell(c.has_mine, "shown")
         self.set_cell(x, y, new_c)
 
-    def show_empty_cells(self, x, y):
+    def clear_from(self, x, y):
+        """Recrusively shows all the surrounding cells that don't have bombs nearby
+
+        Input:
+            x - The x coordinate of the cell
+            y - The y coordinate of the cell
+
+        Output: None
+        """
         self.show_cell(x, y)
         n_around = self.n_mines_around(x, y)
         if n_around == 0:
             self.show_cell(x, y)
             coords_around = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
             for coord in coords_around:
-                if self.coords_in_grid(*coord) and self.get_cell(*coord).state == "hidden":
-                    self.show_empty_cells(*coord)
+                if self.coords_are_valid(*coord) and self.get_cell(*coord).state == "hidden":
+                    self.clear_from(*coord)
 
     def flag_cell(self, x, y):
         """Flags a cell, this is its state changes to "flagged"
@@ -232,20 +259,47 @@ class MinesweeperGrid(object):
         self.set_cell(x, y, new_c)
 
     def is_loss(self):
+        """Checks wether the game is lost or not
+
+        Input: None
+        Output:
+            True if game is lost, False otherwise
+        """
         return any([cell.has_mine and cell.state == "shown" for cell in self._cells])
 
     def is_win(self):
+        """Checks wether the game is won or not
+
+        Input: None
+        Output:
+            True if game is won, False otherwise
+        """
         return all([(cell.has_mine and cell.state == "flagged") or not cell.has_mine
                         for cell in self._cells])
 
     def ended(self):
+        """Check if the game has ended either winning it or lossing it
+        
+        Input: None
+        Output:
+            True if game has ended, False otherwise
+        """
         return self.is_loss() or self.is_win()
     
     def n_mines_around(self, x, y):
+        """Returns the number of mines surrounding the cell, itself included
+
+        Input:
+            x - The x coordinate of the cell
+            y - The y coordinate of the cell
+
+        Output:
+            The number of mines
+        """
         count = 0
         for dx in range(max(0, x - 1), min(x + 2, self.width)):
             for dy in range(max(0, y - 1), min(y + 2, self.height)):
-                if (dx != x or dy != y) and self.get_cell(dx, dy).has_mine:
+                if self.get_cell(dx, dy).has_mine:
                     count += 1
 
         return count
