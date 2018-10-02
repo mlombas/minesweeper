@@ -8,7 +8,7 @@ while not grid.ended():
     if action == "flag":
         grid.flag_cell(*coords)
     elif action == "show":
-        grid.show_empty_cells(*coords)
+        grid.clear_from(*coords)
 
 io.show_grid(grid)
 io.print_end(grid.is_win())
