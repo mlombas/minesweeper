@@ -55,6 +55,10 @@ class MinesweeperIO(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_user_dimensions(self, hardness_levels):
+        pass
+
 
 class ConsoleIO(MinesweeperIO):
     """Provides a minesweeper inyterface for cmd
@@ -63,10 +67,10 @@ class ConsoleIO(MinesweeperIO):
 
     def show_grid(self, grid):
         out = []
+        mine_c, hidden_c, flagged_c, empty_c = "M", "■", "!", "□"
         for y in range(grid.height):
             line = ""
             for x in range(grid.width):
-                mine_c, hidden_c, flagged_c, empty_c = "M", "■", "!", "□"
                 cell = grid.get_cell(x, y)
                 if cell.state == "hidden":
                     line += hidden_c
@@ -100,11 +104,21 @@ class ConsoleIO(MinesweeperIO):
             else:
                 return ("flag" if action == "M" else "show", coords)
 
+    def get_user_dimensions(self, hardness_levels):
+        print("Introduzca las dimensiones del tablero en formato anchoxalto")
+        width, height = (int(x) for x in input().split("x"))
+        print("Introduzca el nivel de dificultad, entre los siguientes")
+        for key in hardness_levels.keys():
+            print(" " + key)
+        hardness = hardness_levels[input().strip()]
+
+        return ((width, height), hardness)
+
     def print_end(self, won=False):
         if won:
-            print("You won motherfucker")
+            print("Granaste wey")
         else:
-            print("You lost pussy")
+            print("Perdiste amego")
 
 class MinesweeperGrid(object):
     """Provides support for storing a mine grid
@@ -139,7 +153,7 @@ class MinesweeperGrid(object):
         """
         def get_random_point():
             return (randint(0, width - 1), randint(0, height - 1))
-        
+
         grid = cls(width, height)
         while n_mines:
             x, y = get_random_point()
@@ -303,3 +317,30 @@ class MinesweeperGrid(object):
                     count += 1
 
         return count
+
+
+class MinesweeperGame:
+    grid = None
+    io_controller = None
+
+    def __init__(self, grid, io_controller):
+        self.grid = grid
+        self.io_controller = io_controller
+
+    def play_turn(self):
+        action, coords = self.io_controller.get_grid_input(
+                            self.grid.width,
+                            self.grid.height
+                        )
+        if action == "flag":
+            self.grid.flag_cell(*coords)
+        elif action == "show":
+            self.grid.clear_from(*coords)
+
+    def play_until_end(self):
+        while not self.grid.ended():
+            self.io_controller.show_grid(self.grid)
+            self.play_turn()
+
+        
+    
