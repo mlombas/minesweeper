@@ -8,6 +8,8 @@ classes for IO
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from random import randint
+import pygame
+from pygame.locals import *
 
 class MinesweeperIO(ABC):
     """Parent class for those who controls IO
@@ -64,7 +66,10 @@ class MinesweeperIO(ABC):
         pass
 
 
-class FrameIO(MinesweeperIO):
+class PygameIO(MinesweeperIO):
+    def __init__(self, hidden_image_src, empty_image_src, marked_image_src, bomb_image_src):
+        pass
+
     def show_grid(self, grid):
         pass
 
