@@ -63,6 +63,21 @@ class MinesweeperIO(ABC):
     def get_user_hardness(self, hardness_levels):
         pass
 
+
+class FrameIO(MinesweeperIO):
+    def show_grid(self, grid):
+        pass
+
+    def get_grid_input(self, g_width, g_height):
+        pass
+    
+    def get_user_dimensions(self):
+        pass
+    
+    def get_user_hardness(self):
+        pass
+
+
 class ConsoleIO(MinesweeperIO):
     """Provides a minesweeper inyterface for cmd
     See IO_Controller for more details
@@ -96,16 +111,16 @@ class ConsoleIO(MinesweeperIO):
     def get_grid_input(self, g_width, g_height):
         print("Introduce D para descubrir y M para marcar, seguido de las coordenadas de la celda separadas por una coma")
         while True:
-            action, coords = input().split() #TODO prevent user from introducing only one value 
             try:
+                action, coords = input().split(" ", maxsplit=1)
                 coords = (int(c) - 1 for c in coords.split(","))
             except:
-                print("Ha introducido unas coordenadas no validas, por favor intentelo de nuevo")
-
-            if action not in ["M", "D"]:
-                print("Ha introducido una acción no válida, por favor intentelo de nuevo")
+                print("Ha introducido una entrada no valida, por favor intentelo de nuevo")
             else:
-                return ("flag" if action == "M" else "show", coords)
+                if action not in ["M", "D"]:
+                    print("Ha introducido una acción no válida, por favor intentelo de nuevo")
+                else:
+                    return ("flag" if action == "M" else "show", coords)
 
     def get_user_dimensions(self):
         print("Introduzca las dimensiones del tablero en formato anchoxalto")
@@ -135,12 +150,14 @@ class ConsoleIO(MinesweeperIO):
                             "compañero", "pringado", "parguela",
                             "sempai", "onee-chan", "baka"
                          ]
-        name = possible_names[randint(0, len(possinle_names) - 1)]
+        name = possible_names[randint(0, len(possible_names) - 1)]
         if won:
             print("Ganaste", name)
         else:
             print("Perdiste", name)
+
         input("Pulsa enter para salir") 
+
 
 class MinesweeperGrid(object):
     """Provides support for storing a mine grid
@@ -162,7 +179,7 @@ class MinesweeperGrid(object):
         self._cells = [self.Cell(False, "hidden")] * (width * height)
 
     @classmethod
-    def gen_random(cls, width, height, n_mines):
+    def gen_random(cls, width, height, n_mines, forbidden_coords=[]):
         """Creates a grid with mines in random positions
 
         Input:
@@ -179,7 +196,7 @@ class MinesweeperGrid(object):
         grid = cls(width, height)
         while n_mines:
             x, y = get_random_point()
-            while grid.get_cell(x, y).has_mine:
+            while (x, y) in forbidden_coords and grid.get_cell(x, y).has_mine:
                 x, y = get_random_point()
 
             grid.put_mine(x, y)
@@ -340,6 +357,9 @@ class MinesweeperGrid(object):
 
         return count
 
+    def get_n_mines(self):
+        return len(cell for cell in self._cells if cell.has_mine == True)
+
 
 class MinesweeperGame:
     grid = None
@@ -349,11 +369,7 @@ class MinesweeperGame:
         self.grid = grid
         self.io_controller = io_controller
 
-    def play_turn(self):
-        action, coords = self.io_controller.get_grid_input(
-                            self.grid.width,
-                            self.grid.height
-                        )
+    def do_action(self, action, coords):
         if action == "flag":
             self.grid.flag_cell(*coords)
         elif action == "show":
@@ -362,7 +378,10 @@ class MinesweeperGame:
     def play_until_end(self):
         while not self.grid.ended():
             self.io_controller.show_grid(self.grid)
-            self.play_turn()
-
+            action, coords = self.io_controller.get_grid_input(
+                                self.grid.width,
+                                self.grid.height
+                            )
+            self.do_action(action, coords)
         
     
