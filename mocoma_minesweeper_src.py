@@ -130,10 +130,16 @@ class ConsoleIO(MinesweeperIO):
         return hardness_levels[lvl]
     
     def print_end(self, won=False):
+        possible_names = [
+                            "amego", "wey", "boludo", "puto",
+                            "compañero", "pringado", "parguela",
+                            "sempai", "onee-chan", "baka"
+                         ]
+        name = possible_names[randint(0, len(possinle_names) - 1)]
         if won:
-            print("Granaste wey")
+            print("Ganaste", name)
         else:
-            print("Perdiste amego")
+            print("Perdiste", name)
         input("Pulsa enter para salir") 
 
 class MinesweeperGrid(object):
