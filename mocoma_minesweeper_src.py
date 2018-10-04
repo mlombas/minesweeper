@@ -56,9 +56,12 @@ class MinesweeperIO(ABC):
         pass
 
     @abstractmethod
-    def get_user_dimensions(self, hardness_levels):
+    def get_user_dimensions(self):
         pass
 
+    @abstractmethod
+    def get_user_hardness(self, hardness_levels):
+        pass
 
 class ConsoleIO(MinesweeperIO):
     """Provides a minesweeper inyterface for cmd
@@ -104,21 +107,34 @@ class ConsoleIO(MinesweeperIO):
             else:
                 return ("flag" if action == "M" else "show", coords)
 
-    def get_user_dimensions(self, hardness_levels):
+    def get_user_dimensions(self):
         print("Introduzca las dimensiones del tablero en formato anchoxalto")
-        width, height = (int(x) for x in input().split("x"))
-        print("Introduzca el nivel de dificultad, entre los siguientes")
+        while True:
+            try:    
+                width, height = (int(x) for x in input().split("x"))
+            except:
+                print("Ha introducido valores no válidos, intentelo de nuevo")
+            else: break
+            
+        return (width, height)
+
+    def get_user_hardness(self, hardness_levels):
+        print("Elige un nivel de dificultad")
         for key in hardness_levels.keys():
             print(" " + key)
-        hardness = hardness_levels[input().strip()]
 
-        return ((width, height), hardness)
-
+        lvl = input().strip()
+        while lvl not in hardness_levels:
+            print("Nivel no válido")
+            lvl = input().strip()
+        return hardness_levels[lvl]
+    
     def print_end(self, won=False):
         if won:
             print("Granaste wey")
         else:
             print("Perdiste amego")
+        input("Pulsa enter para salir") 
 
 class MinesweeperGrid(object):
     """Provides support for storing a mine grid

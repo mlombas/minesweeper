@@ -9,9 +9,10 @@ hardness_levels = {
     "extremo": 0.20,
     "infierno": 0.25
 }
-dimensions, hardness = io.get_user_dimensions(hardness_levels)
-n_mines = ceil(dimensions[0] * dimensions[1] * hardness)
-grid = MinesweeperGrid.gen_random(*dimensions, n_mines)
+width, height = io.get_user_dimensions()
+hardness = io.get_user_hardness(hardness_levels)
+n_mines = ceil(width * height * hardness)
+grid = MinesweeperGrid.gen_random(width, height, n_mines)
 game = MinesweeperGame(grid, io)
 game.play_until_end()
 
