@@ -19,6 +19,11 @@ class MinesweeperIO(ABC):
     far simpler.
     This class is abstract and thus can not be instantied
     """
+    def __init__(self, hidden_src, empty_src, number_range_src, flagged_src, mine_src):
+        self.hidden_src = hidden_src
+        self.shown_src = [empty_src] + number_range_src
+        self.flagged_src = flagged_src
+        self.mine_src = mine_src
 
     @abstractmethod
     def print_end(self, won=False):
@@ -67,9 +72,6 @@ class MinesweeperIO(ABC):
 
 
 class PygameIO(MinesweeperIO):
-    def __init__(self, hidden_image_src, empty_image_src, marked_image_src, bomb_image_src):
-        pass
-
     def show_grid(self, grid):
         pass
 
@@ -88,23 +90,25 @@ class ConsoleIO(MinesweeperIO):
     See IO_Controller for more details
     """
 
+    def __init__(self, hidden_src = "■", empty_src="□", number_range_src=[str(n) for n in range(1, 10)], flagged_src="F", mine_src="M"):
+        super().__init__(hidden_src, empty_src, number_range_src, flagged_src, mine_src)
+
     def show_grid(self, grid):
         out = []
-        mine_c, hidden_c, flagged_c, empty_c = "M", "■", "!", "□"
         for y in range(grid.height):
             line = ""
             for x in range(grid.width):
                 cell = grid.get_cell(x, y)
                 if cell.state == "hidden":
-                    line += hidden_c
+                    line += self.hidden_src
                 elif cell.state == "flagged":
-                    line += flagged_c
+                    line += self.flagged_src
                 elif cell.state == "shown":
                     if cell.has_mine:
-                        line += mine_c
+                        line += self.mine_src
                     else:
                         n_around = grid.n_mines_around(x, y)
-                        line += str(n_around) if n_around else empty_c
+                        line += self.shown_src[n_around]
 
                 line += " "
 
@@ -332,7 +336,7 @@ class MinesweeperGrid(object):
         Output:
             True if game is won, False otherwise
         """
-        return all([(cell.has_mine and cell.state == "flagged") or not cell.has_mine
+        return all([(cell.has_mine and cell.state == "flagged") or (not cell.has_mine and cell.state != "flagged")
                         for cell in self._cells])
 
     def ended(self):
