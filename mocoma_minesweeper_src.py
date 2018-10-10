@@ -20,9 +20,11 @@ class MinesweeperIO(ABC):
     far simpler.
     This class is abstract and thus can not be instantied
     """
-    @abstractmethod
-    def __init__(self, hidden_src, empty_src, mark_src, mine_src, nums_src):
-        pass
+    def __init__(self, hidden_src, empty_src, number_range_src, flagged_src, mine_src):
+        self.hidden_src = hidden_src
+        self.shown_src = [empty_src] + number_range_src
+        self.flagged_src = flagged_src
+        self.mine_src = mine_src
 
     @abstractmethod
     def print_end(self, won=False):
@@ -72,28 +74,31 @@ class MinesweeperIO(ABC):
 
 
 class PygameIO(MinesweeperIO):
-    def __init__(self, hidden_src="", empty_src="", flagged_src="", mine_src="", nums_src=[""]):
-        self.hidden_image_src = hidden_src
-        self.flagged_image_src = flagged_src
-        self.mine_image_src = mine_src
-        self.shown_images_src = [empty_src] + nums_src
-
-        pygame.init()
-        self._display = pygame.display.set_mode((300, 300))
+    def __init__(self,
+                 hidden_src="assets/textures/tile_hidden.png",
+                 empty_src="assets/textures/tile_shown.png",
+                 number_range_src=["assets/textures/number_" + str(x) + ".png" for x in range(1, 9)],
+                 flagged_src="assets/textures/flag.png",
+                 mine_src="assets/textures/mine.png"):
         self._events = []
-        def event_helper():
-            while True:
-                for event in pygame.event.get():
-                    print(event.type == QUIT)
-                    if event.type == QUIT:
-                        pygame.quit()
-                        sys.exit()
-                    else:
-                        self._events.append(event)
-
-        self._event_thread = threading.Thread(target=event_helper)
-        self._event_thread.start()
+        pygame.init()
         
+        #Load images
+        self.hidden_src = pygame.image.load(hidden_src)
+        self.flagged_src = pygame.image.load(flagged_src)
+        self.mine_src = pygame.image.load(mine_src)
+        self.shown_src = [pygame.image.load(empty_src)] + \
+            [pygame.image.load(num_src) for num_src in number_range_src]
+        
+        #Display
+        self._display = pygame.display.set_mode((300, 300))
+        self._display.blit(self.hidden_src, (0, 0))
+        self._display.blit(self.shown_src[0], (10, 10))
+        pygame.display.update()
+
+    def destroy(self):
+        pygame.quit()
+    
     def print_end(self, is_win):
         pass
 
@@ -101,7 +106,11 @@ class PygameIO(MinesweeperIO):
         pass
 
     def get_grid_input(self, g_width, g_height):
-        pass
+        self._events += list(pygame.event.get())
+        if self._events:
+            curr_event = self._events.pop(0)
+            if curr_event.type == pygame.QUIT:
+                return "quit"
     
     def get_user_dimensions(self):
         pass
@@ -115,30 +124,31 @@ class ConsoleIO(MinesweeperIO):
     See IO_Controller for more details
     """
 
-    def __init__(self, hidden_src="■", empty_src=" ", flagged_src="!", mine_src="M",
-                 nums_src=[str(x + 1) for x in range(8)]):
-        self.hidden_c = hidden_src 
-        self.flagged_c = flagged_src
-        self.mine_c = mine_src
-        self.shown_chars = [empty_src] + nums_src #map from n_bombs to number ot empty
+    def __init__(self, hidden_src="■", empty_src=" ", number_range_src=[str(x + 1) for x in range(8)], flagged_src="!", mine_src="M"):
+       super().__init__(hidden_src, empty_src, number_range_src, flagged_src, mine_src)
 
     def show_grid(self, grid):
         out = []
 
+    def __init__(self, hidden_src = "■", empty_src="□", number_range_src=[str(n) for n in range(1, 10)], flagged_src="F", mine_src="M"):
+        super().__init__(hidden_src, empty_src, number_range_src, flagged_src, mine_src)
+
+    def show_grid(self, grid):
+        out = []
         for y in range(grid.height):
             line = ""
             for x in range(grid.width):
                 cell = grid.get_cell(x, y)
                 if cell.state == "hidden":
-                    line += self.hidden_c
+                    line += self.hidden_src
                 elif cell.state == "flagged":
-                    line += self.flagged_c
+                    line += self.flagged_src
                 elif cell.state == "shown":
                     if cell.has_mine:
-                        line += self.mine_c
+                        line += self.mine_src
                     else:
                         n_around = grid.n_mines_around(x, y)
-                        line += self.shown_chars[n_around]
+                        line += self.shown_src[n_around]
 
                 line += " "
 
@@ -156,10 +166,12 @@ class ConsoleIO(MinesweeperIO):
             except:
                 print("Ha introducido una entrada no valida, por favor intentelo de nuevo")
             else:
-                if action not in ["M", "D"]:
+                if action not in ["M", "D", "Q"]:
                     print("Ha introducido una acción no válida, por favor intentelo de nuevo")
                 else:
-                    return ("flag" if action == "M" else "show", coords)
+                    if action == "M": return ("flag", coords)
+                    if action == "D": return ("show", coords)
+                    if action == "Q": return ("quit", True)
 
     def get_user_dimensions(self):
         print("Introduzca las dimensiones del tablero en formato anchoxalto")
@@ -366,7 +378,7 @@ class MinesweeperGrid(object):
         Output:
             True if game is won, False otherwise
         """
-        return all([(cell.has_mine and cell.state == "flagged") or not cell.has_mine
+        return all([(cell.has_mine and cell.state == "flagged") or (not cell.has_mine and cell.state != "flagged")
                         for cell in self._cells])
 
     def ended(self):

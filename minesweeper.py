@@ -2,6 +2,10 @@ from mocoma_minesweeper_src import ConsoleIO, MinesweeperGrid, MinesweeperGame, 
 from math import ceil
 
 io = PygameIO()
+while True:
+    if io.get_grid_input(0, 0) == "quit":
+        io.destroy()
+        break
 """hardness_levels = {
     "facil": 0.07,
     "medio": 0.10,
