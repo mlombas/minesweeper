@@ -8,8 +8,9 @@ classes for IO
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from random import randint
-import pygame
+import pygame, sys
 from pygame.locals import *
+import threading
 
 class MinesweeperIO(ABC):
     """Parent class for those who controls IO
@@ -19,6 +20,9 @@ class MinesweeperIO(ABC):
     far simpler.
     This class is abstract and thus can not be instantied
     """
+    @abstractmethod
+    def __init__(self, hidden_src, empty_src, mark_src, mine_src, nums_src):
+        pass
 
     @abstractmethod
     def print_end(self, won=False):
@@ -29,7 +33,8 @@ class MinesweeperIO(ABC):
 
         Output: None
         """
-
+        pass
+        
     @abstractmethod
     def show_grid(self, grid):
         """Shows the grid to the viewing port
@@ -67,7 +72,29 @@ class MinesweeperIO(ABC):
 
 
 class PygameIO(MinesweeperIO):
-    def __init__(self, hidden_image_src, empty_image_src, marked_image_src, bomb_image_src):
+    def __init__(self, hidden_src="", empty_src="", flagged_src="", mine_src="", nums_src=[""]):
+        self.hidden_image_src = hidden_src
+        self.flagged_image_src = flagged_src
+        self.mine_image_src = mine_src
+        self.shown_images_src = [empty_src] + nums_src
+
+        pygame.init()
+        self._display = pygame.display.set_mode((300, 300))
+        self._events = []
+        def event_helper():
+            while True:
+                for event in pygame.event.get():
+                    print(event.type == QUIT)
+                    if event.type == QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    else:
+                        self._events.append(event)
+
+        self._event_thread = threading.Thread(target=event_helper)
+        self._event_thread.start()
+        
+    def print_end(self, is_win):
         pass
 
     def show_grid(self, grid):
@@ -88,23 +115,30 @@ class ConsoleIO(MinesweeperIO):
     See IO_Controller for more details
     """
 
+    def __init__(self, hidden_src="■", empty_src=" ", flagged_src="!", mine_src="M",
+                 nums_src=[str(x + 1) for x in range(8)]):
+        self.hidden_c = hidden_src 
+        self.flagged_c = flagged_src
+        self.mine_c = mine_src
+        self.shown_chars = [empty_src] + nums_src #map from n_bombs to number ot empty
+
     def show_grid(self, grid):
         out = []
-        mine_c, hidden_c, flagged_c, empty_c = "M", "■", "!", "□"
+
         for y in range(grid.height):
             line = ""
             for x in range(grid.width):
                 cell = grid.get_cell(x, y)
                 if cell.state == "hidden":
-                    line += hidden_c
+                    line += self.hidden_c
                 elif cell.state == "flagged":
-                    line += flagged_c
+                    line += self.flagged_c
                 elif cell.state == "shown":
                     if cell.has_mine:
-                        line += mine_c
+                        line += self.mine_c
                     else:
                         n_around = grid.n_mines_around(x, y)
-                        line += str(n_around) if n_around else empty_c
+                        line += self.shown_chars[n_around]
 
                 line += " "
 
