@@ -83,27 +83,51 @@ class PygameIO(MinesweeperIO):
         self._events = []
         pygame.init()
         
+        #Display
+        self._d_width = 800
+        self._d_height = 600
+        self._display = pygame.display.set_mode((self._d_width, self._d_height))
+   
         #Load images
         self.hidden_src = pygame.image.load(hidden_src)
         self.flagged_src = pygame.image.load(flagged_src)
         self.mine_src = pygame.image.load(mine_src)
         self.shown_src = [pygame.image.load(empty_src)] + \
             [pygame.image.load(num_src) for num_src in number_range_src]
-        
-        #Display
-        self._display = pygame.display.set_mode((300, 300))
-        self._display.blit(self.hidden_src, (0, 0))
-        self._display.blit(self.shown_src[0], (10, 10))
-        pygame.display.update()
-
+     
     def destroy(self):
         pygame.quit()
+        sys.exit()
     
     def print_end(self, is_win):
         pass
 
     def show_grid(self, grid):
-        pass
+        img_width = int(self._d_width / grid.width)
+        img_height = int(self._d_height / grid.height)
+        hidden_img = pygame.transform.scale(self.hidden_src, (img_width, img_height)) #Scale images to fit in screen
+        flagged_img = pygame.transform.scale(self.flagged_src, (img_width, img_height))
+        mine_img = pygame.transform.scale(self.mine_src, (img_width, img_height))
+        shown_imgs = [pygame.transform.scale(img, (img_width, img_height)) for img in self.shown_src]
+        
+        for x in range(grid.width):
+            for y in range(grid.height):
+               cell = grid.get_cell(x, y)
+               if cell.state == "flagged":
+                  self._display.blit(hidden_img, (x * img_width, y * img_height))     
+                  self._display.blit(flag_img, (x * img_width, y * img_height))     
+               elif cell.state == "shown":
+                   if cell.has_mine:
+                      self._display.blit(shown_imgs[0], (x * img_width, y * img_height))     
+                      self._display.blit(mine_img, (x * img_width, y * img_height))     
+                   else:    
+                      self._display.blit(shown_imgs[0], (x * img_width, y * img_height))     
+                      self._display.blit(shown_imgs[grid.n_mines_around(x, y)], (x * img_width, y * img_height))
+               else:
+                  self._display.blit(hidden_img, (x * img_width, y * img_height))     
+                   
+
+        pygame.display.update()
 
     def get_grid_input(self, g_width, g_height):
         self._events += list(pygame.event.get())
@@ -206,9 +230,9 @@ class ConsoleIO(MinesweeperIO):
             print("Ganaste", name)
         else:
             print("Perdiste", name)
-
-        input("Pulsa enter para salir") 
-
+    def destroy(self):
+        input("Pulsa enter para salir")
+        sys.exit()
 
 class MinesweeperGrid(object):
     """Provides support for storing a mine grid
@@ -425,6 +449,8 @@ class MinesweeperGame:
             self.grid.flag_cell(*coords)
         elif action == "show":
             self.grid.clear_from(*coords)
+        elif action == "quit":
+            self.io_controller.destroy()
 
     def play_until_end(self):
         while not self.grid.ended():
