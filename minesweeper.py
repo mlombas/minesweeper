@@ -2,6 +2,8 @@ from mocoma_minesweeper_src import ConsoleIO, MinesweeperGrid, MinesweeperGame, 
 from math import ceil
 
 io = PygameIO()
+grid = MinesweeperGrid(10, 10)
+io.show_grid(grid)
 while True:
     if io.get_grid_input(0, 0) == "quit":
         io.destroy()
