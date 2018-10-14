@@ -15,6 +15,13 @@ import pygame, sys
 from pygame.locals import *
 import threading
 
+class MinesweeperException(Exception):
+    pass
+
+class OutOfGridException(MinesweeperException):
+    def __init__(self, x, y):
+        self.message = "Coords ({}, {}) out of range".format(x, y)
+
 class MinesweeperIO(ABC):
     """Parent class for those who controls IO
 
@@ -257,9 +264,6 @@ class MinesweeperGrid(object):
     Attributes:
         _cells - The cell list, DO NOT TOUCH THIS LIST, use the get_cell() asnd set_cell() instead
     """
-
-    _cells = []
-
     class Cell(object):
         class STATES(Enum):
             HIDDEN = 1
@@ -274,6 +278,8 @@ class MinesweeperGrid(object):
             self.has_mine = has_mine
             self.state = state
 
+
+    _cells = []
 
     def __init__(self, width, height):
         self.width = width
@@ -294,6 +300,7 @@ class MinesweeperGrid(object):
         """
         def get_random_point():
             return (randint(0, width - 1), randint(0, height - 1))
+
 
         grid = cls(width, height)
         while n_mines:
@@ -328,7 +335,9 @@ class MinesweeperGrid(object):
         
         Output:
             The cell, an instance of the Cell class
-        """
+        """     
+        if not coords_are_valid(x, y): raise OutOfGridException(x, y)
+
         return self._cells[y * self.height + x]
 
     def set_cell(self, x, y, cell):
@@ -341,6 +350,8 @@ class MinesweeperGrid(object):
         
         Output: None
         """
+        if not coords_are_valid(x, y): raise OutOfGridException(x, y)
+
         self._cells[y * self.height + x] = cell
 
     def put_mine(self, x, y):
@@ -451,6 +462,8 @@ class MinesweeperGrid(object):
         Output:
             The number of mines
         """
+        if not self.coords_are_valid(x, y): raise OutOfGridException(x, y)
+        
         count = 0
         for dx in range(max(0, x - 1), min(x + 2, self.width)):
             for dy in range(max(0, y - 1), min(y + 2, self.height)):
