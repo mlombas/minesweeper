@@ -5,7 +5,10 @@ provides a Minesweeper_Grid to store the mine grid and several
 classes for IO
 """
 
+#TODO make custom exceptions
+
 from abc import ABC, abstractmethod
+from enum import Enum
 from collections import namedtuple
 from random import randint
 import pygame, sys
@@ -20,6 +23,12 @@ class MinesweeperIO(ABC):
     far simpler.
     This class is abstract and thus can not be instantied
     """
+    class ACTIONS(Enum):
+        QUIT = 0
+        SHOW = 1
+        FLAG = 2
+        NOTHING = 3
+
     def __init__(self, hidden_src, empty_src, number_range_src, flagged_src, mine_src):
         self.hidden_src = hidden_src
         self.shown_src = [empty_src] + number_range_src
@@ -72,6 +81,9 @@ class MinesweeperIO(ABC):
     def get_user_hardness(self, hardness_levels):
         pass
 
+    @abstractmethod
+    def destroy(self):
+        pass
 
 class PygameIO(MinesweeperIO):
     def __init__(self,
@@ -84,16 +96,16 @@ class PygameIO(MinesweeperIO):
         pygame.init()
         
         #Display
-        self._d_width = 800
-        self._d_height = 600
+        self._d_width = 800 
+        self._d_height = 800
         self._display = pygame.display.set_mode((self._d_width, self._d_height))
    
         #Load images
         self.hidden_src = pygame.image.load(hidden_src)
         self.flagged_src = pygame.image.load(flagged_src)
         self.mine_src = pygame.image.load(mine_src)
-        self.shown_src = [pygame.image.load(empty_src)] + \
-            [pygame.image.load(num_src) for num_src in number_range_src]
+        self.shown_bg_src = pygame.image.load(empty_src)
+        self.nums_src = [pygame.image.load(num_src) for num_src in number_range_src]
      
     def destroy(self):
         pygame.quit()
@@ -105,27 +117,27 @@ class PygameIO(MinesweeperIO):
     def show_grid(self, grid):
         img_width = int(self._d_width / grid.width)
         img_height = int(self._d_height / grid.height)
-        hidden_img = pygame.transform.scale(self.hidden_src, (img_width, img_height)) #Scale images to fit in screen
+        hidden_bg_img = pygame.transform.scale(self.hidden_src, (img_width, img_height)) #Scale images to fit in screen
         flagged_img = pygame.transform.scale(self.flagged_src, (img_width, img_height))
         mine_img = pygame.transform.scale(self.mine_src, (img_width, img_height))
-        shown_imgs = [pygame.transform.scale(img, (img_width, img_height)) for img in self.shown_src]
-        
+        shown_bg_img = pygame.transform.scale(self.shown_bg_src, (img_width, img_height))
+        nums_imgs = [pygame.transform.scale(num, (img_width, img_height)) for num in self.nums_src]
+
         for x in range(grid.width):
             for y in range(grid.height):
                cell = grid.get_cell(x, y)
-               if cell.state == "flagged":
-                  self._display.blit(hidden_img, (x * img_width, y * img_height))     
-                  self._display.blit(flag_img, (x * img_width, y * img_height))     
-               elif cell.state == "shown":
+               if cell.state == cell.STATES.SHOWN:
+                   self._display.blit(shown_bg_img, (x * img_width, y * img_height))
+                   n_around = grid.n_mines_around(x, y)
                    if cell.has_mine:
-                      self._display.blit(shown_imgs[0], (x * img_width, y * img_height))     
-                      self._display.blit(mine_img, (x * img_width, y * img_height))     
-                   else:    
-                      self._display.blit(shown_imgs[0], (x * img_width, y * img_height))     
-                      self._display.blit(shown_imgs[grid.n_mines_around(x, y)], (x * img_width, y * img_height))
-               else:
-                  self._display.blit(hidden_img, (x * img_width, y * img_height))     
-                   
+                       self._display.blit(mine_img, (x * img_width, y * img_height))
+                   elif n_around:
+                       self._display.blit(nums_imgs[n_around - 1], (x * img_width, y * img_height)) #set to n_mines - 1 cause arrays are 0-indexed
+               elif cell.state == cell.STATES.FLAGGED:
+                   self._display.blit(hidden_bg_img, (x * img_width, y * img_height))
+                   self._display.blit(flagged_img, (x * img_width, y * img_height))
+               else: #Must be HIDDEN
+                   self._display.blit(hidden_bg_img, (x * img_width, y * img_height))
 
         pygame.display.update()
 
@@ -134,7 +146,9 @@ class PygameIO(MinesweeperIO):
         if self._events:
             curr_event = self._events.pop(0)
             if curr_event.type == pygame.QUIT:
-                return "quit"
+                return (self.ACTIONS.QUIT, False)
+
+        return (self.ACTIONS.NOTHING, False)
     
     def get_user_dimensions(self):
         pass
@@ -163,11 +177,11 @@ class ConsoleIO(MinesweeperIO):
             line = ""
             for x in range(grid.width):
                 cell = grid.get_cell(x, y)
-                if cell.state == "hidden":
+                if cell.state == cell.STATES.HIDDEN:
                     line += self.hidden_src
-                elif cell.state == "flagged":
+                elif cell.state == cell.STATES.FLAGGED:
                     line += self.flagged_src
-                elif cell.state == "shown":
+                elif cell.state == cell.STATES.SHOWN:
                     if cell.has_mine:
                         line += self.mine_src
                     else:
@@ -175,7 +189,6 @@ class ConsoleIO(MinesweeperIO):
                         line += self.shown_src[n_around]
 
                 line += " "
-
             out.append(line)
 
         print("\n".join(out))
@@ -193,9 +206,9 @@ class ConsoleIO(MinesweeperIO):
                 if action not in ["M", "D", "Q"]:
                     print("Ha introducido una acción no válida, por favor intentelo de nuevo")
                 else:
-                    if action == "M": return ("flag", coords)
-                    if action == "D": return ("show", coords)
-                    if action == "Q": return ("quit", True)
+                    if action == "M": return (ACTIONS.FLAG, coords)
+                    if action == "D": return (ACTIONS.SHOW, coords)
+                    if action == "Q": return (ACTIONS.QUIT, False)
 
     def get_user_dimensions(self):
         print("Introduzca las dimensiones del tablero en formato anchoxalto")
@@ -230,6 +243,7 @@ class ConsoleIO(MinesweeperIO):
             print("Ganaste", name)
         else:
             print("Perdiste", name)
+
     def destroy(self):
         input("Pulsa enter para salir")
         sys.exit()
@@ -242,16 +256,29 @@ class MinesweeperGrid(object):
 
     Attributes:
         _cells - The cell list, DO NOT TOUCH THIS LIST, use the get_cell() asnd set_cell() instead
-        Cell - A class representing a cell of the grid
     """
 
     _cells = []
-    Cell = namedtuple("Cell", ("has_mine", "state"))
+
+    class Cell(object):
+        class STATES(Enum):
+            HIDDEN = 1
+            FLAGGED = 2
+            SHOWN = 3
+
+
+        has_mine = False
+        state = STATES.HIDDEN
+
+        def __init__(self, has_mine = False, state = STATES.HIDDEN):
+            self.has_mine = has_mine
+            self.state = state
+
 
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self._cells = [self.Cell(False, "hidden")] * (width * height)
+        self._cells = [self.Cell] * (width * height)
 
     @classmethod
     def gen_random(cls, width, height, n_mines, forbidden_coords=[]):
@@ -330,7 +357,7 @@ class MinesweeperGrid(object):
         self.set_cell(x, y, new_c)
 
     def show_cell(self, x, y):
-        """Shows a cell, this is its state changes to "shown"
+        """Shows a cell, this is its state changes to cell.STATES.SHOWN
 
         Input:
             x - the x coordinate of the cell
@@ -339,7 +366,7 @@ class MinesweeperGrid(object):
         Output: None
         """
         c = self.get_cell(x, y)
-        new_c = self.Cell(c.has_mine, "shown")
+        new_c = self.Cell(c.has_mine, self.Cell.STATES.SHOWN)
         self.set_cell(x, y, new_c)
 
     def clear_from(self, x, y):
@@ -357,11 +384,11 @@ class MinesweeperGrid(object):
             self.show_cell(x, y)
             coords_around = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
             for coord in coords_around:
-                if self.coords_are_valid(*coord) and self.get_cell(*coord).state == "hidden":
+                if self.coords_are_valid(*coord) and self.get_cell(*coord).state == self.Cell.STATES.HIDDEN:
                     self.clear_from(*coord)
 
     def flag_cell(self, x, y):
-        """Flags a cell, this is its state changes to "flagged"
+        """Flags a cell, this is its state changes to Cell.STATES.FLAGGED
 
         Input:
             x - the x coordinate of the cell
@@ -370,11 +397,11 @@ class MinesweeperGrid(object):
         Output: None
         """
         c = self.get_cell(x, y)
-        new_c = self.Cell(c.has_mine, "flagged")
+        new_c = self.Cell(c.has_mine, self.Cell.STATES.FLAGGED)
         self.set_cell(x, y, new_c)
 
     def hide_cell(self, x, y):
-        """Hides a cell, this is its state changes to "hidden"
+        """Hides a cell, this is its state changes to cell.STATES.HIDDEN
 
         Input:
             x - the x coordinate of the cell
@@ -383,7 +410,7 @@ class MinesweeperGrid(object):
         Output: None
         """
         c = self.get_cell(x, y)
-        new_c = self.Cell(c.has_mine, "hidden")
+        new_c = self.Cell(c.has_mine, self.Cell.STATES.HIDDEN)
         self.set_cell(x, y, new_c)
 
     def is_loss(self):
@@ -393,7 +420,7 @@ class MinesweeperGrid(object):
         Output:
             True if game is lost, False otherwise
         """
-        return any([cell.has_mine and cell.state == "shown" for cell in self._cells])
+        return any([cell.has_mine and cell.state == cell.STATES.SHOWN for cell in self._cells])
 
     def is_win(self):
         """Checks wether the game is won or not
@@ -402,7 +429,7 @@ class MinesweeperGrid(object):
         Output:
             True if game is won, False otherwise
         """
-        return all([(cell.has_mine and cell.state == "flagged") or (not cell.has_mine and cell.state != "flagged")
+        return all([(cell.has_mine and cell.state == cell.STATES.FLAGGED) or (not cell.has_mine and cell.state != cell.STATES.FLAGGED)
                         for cell in self._cells])
 
     def ended(self):
@@ -433,10 +460,23 @@ class MinesweeperGrid(object):
         return count
 
     def get_n_mines(self):
+        """Returns the number of mines in the grid
+
+        Input: None
+        Output:
+            The number of mines in the entire grid
+        """
         return len(cell for cell in self._cells if cell.has_mine == True)
 
 
 class MinesweeperGame:
+    """This helper class holds a grid and an IO controller
+    and lets play a game either by turns or all in one method
+
+    Attributes:
+        grid - the grid
+        io_controller - the controller
+    """
     grid = None
     io_controller = None
 
@@ -445,14 +485,27 @@ class MinesweeperGame:
         self.io_controller = io_controller
 
     def do_action(self, action, coords):
-        if action == "flag":
+        """Executes an action in the grid
+        
+        Input:
+            action - the action to take
+            coords - a 2-tuple with the coordinates where do the action
+        Output: None
+        """
+        if action == io_controller.ACTIONS.SHOW:
             self.grid.flag_cell(*coords)
-        elif action == "show":
+        elif action == io_controller.ACTIONS.FLAG:
             self.grid.clear_from(*coords)
-        elif action == "quit":
+        elif action == io_controller.ACTIONS.SHOW:
             self.io_controller.destroy()
 
     def play_until_end(self):
+        """Plays the current grid until it
+        is win or lose.
+
+        Input: None
+        Output: None
+        """
         while not self.grid.ended():
             self.io_controller.show_grid(self.grid)
             action, coords = self.io_controller.get_grid_input(

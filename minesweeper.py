@@ -1,13 +1,17 @@
 from mocoma_minesweeper_src import ConsoleIO, MinesweeperGrid, MinesweeperGame, PygameIO
 from math import ceil
+from random import randint
 
 io = PygameIO()
-grid = MinesweeperGrid(10, 10)
-io.show_grid(grid)
-while True:
-    if io.get_grid_input(0, 0) == "quit":
-        io.destroy()
-        break
+grid = MinesweeperGrid.gen_random(10, 10, 20)
+for x in range(10):
+    for y in range(10):
+        n = randint(0, 2)
+        if n == 0: grid.show_cell(x, y)
+        elif n == 1: grid.flag_cell(x, y)
+
+MinesweeperGame(grid, io).play_until_end()
+
 """hardness_levels = {
     "facil": 0.07,
     "medio": 0.10,
