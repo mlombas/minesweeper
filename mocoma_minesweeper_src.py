@@ -4,21 +4,21 @@ You can use this module to create your own version of minesweeper
 provides a Minesweeper_Grid to store the mine grid and several
 classes for IO
 """
-
-#TODO make custom exceptions
-
 from abc import ABC, abstractmethod
 from enum import Enum
 from collections import namedtuple
 from random import randint
 import pygame, sys
 from pygame.locals import *
-import threading
 
 class MinesweeperException(Exception):
+    """Base exception for this module
+    """
     pass
 
 class OutOfGridException(MinesweeperException):
+    """For throwing when a coordinate falls out of the grid
+    """
     def __init__(self, x, y):
         self.message = "Coords ({}, {}) out of range".format(x, y)
 
@@ -31,6 +31,8 @@ class MinesweeperIO(ABC):
     This class is abstract and thus can not be instantied
     """
     class ACTIONS(Enum):
+        """Enum representing various actions for the get_grid_input() method
+        """
         QUIT = 0
         SHOW = 1
         FLAG = 2
@@ -82,17 +84,39 @@ class MinesweeperIO(ABC):
 
     @abstractmethod
     def get_user_dimensions(self):
+        """Gets a width and a height from the user
+
+        Input: None
+        Output:
+            A tuple in the form (width, height)
+        """
         pass
 
     @abstractmethod
     def get_user_hardness(self, hardness_levels):
+        """Get the hardness level from the user
+
+        Input: 
+            hardness_levels - A list of str with dificultie names
+
+        Output:
+            the str from the list the user has choosen
+        """
         pass
 
     @abstractmethod
     def destroy(self):
+        """A method that cleans up everything, for example open streams
+
+        Input: None
+        Output: None
+        """
         pass
 
 class PygameIO(MinesweeperIO):
+    """Implements the pygame framework to the minesweeper
+    For more info see MinesweeperIO
+    """
     def __init__(self,
                  hidden_src="assets/textures/tile_hidden.png",
                  empty_src="assets/textures/tile_shown.png",
@@ -116,7 +140,6 @@ class PygameIO(MinesweeperIO):
      
     def destroy(self):
         pygame.quit()
-        sys.exit()
     
     def print_end(self, is_win):
         pass
@@ -168,7 +191,6 @@ class ConsoleIO(MinesweeperIO):
     """Provides a minesweeper inyterface for cmd
     See IO_Controller for more details
     """
-
     def __init__(self, hidden_src="■", empty_src=" ", number_range_src=[str(x + 1) for x in range(8)], flagged_src="!", mine_src="M"):
        super().__init__(hidden_src, empty_src, number_range_src, flagged_src, mine_src)
 
@@ -230,14 +252,14 @@ class ConsoleIO(MinesweeperIO):
 
     def get_user_hardness(self, hardness_levels):
         print("Elige un nivel de dificultad")
-        for key in hardness_levels.keys():
-            print(" " + key)
+        for lvl in hardness_levels:
+            print(" " + lvl)
 
-        lvl = input().strip()
-        while lvl not in hardness_levels:
+        user_lvl = input().strip()
+        while user_lvl not in hardness_levels:
             print("Nivel no válido")
-            lvl = input().strip()
-        return hardness_levels[lvl]
+            user_lvl = input().strip()
+        return user_lvl
     
     def print_end(self, won=False):
         possible_names = [
@@ -252,8 +274,7 @@ class ConsoleIO(MinesweeperIO):
             print("Perdiste", name)
 
     def destroy(self):
-        input("Pulsa enter para salir")
-        sys.exit()
+        input("Pulsa cualquier tecla para salir")
 
 class MinesweeperGrid(object):
     """Provides support for storing a mine grid
@@ -265,7 +286,15 @@ class MinesweeperGrid(object):
         _cells - The cell list, DO NOT TOUCH THIS LIST, use the get_cell() asnd set_cell() instead
     """
     class Cell(object):
+        """A class that represent a cell in the grid
+
+        Attributes:
+            has_mine - wether this cell contains a mine or not
+            state - the state of the cell, one of STATES
+        """
         class STATES(Enum):
+            """Enum representing varius states of a cell
+            """
             HIDDEN = 1
             FLAGGED = 2
             SHOWN = 3
