@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from collections import namedtuple
 from random import randint
+from mocoma_input import prompt
 import pygame, sys
 from pygame.locals import *
 
@@ -117,6 +118,8 @@ class PygameIO(MinesweeperIO):
     """Implements the pygame framework to the minesweeper
     For more info see MinesweeperIO
     """
+    _d_width = 800 
+    _d_height = 800
     def __init__(self,
                  hidden_src="assets/textures/tile_hidden.png",
                  empty_src="assets/textures/tile_shown.png",
@@ -127,8 +130,6 @@ class PygameIO(MinesweeperIO):
         pygame.init()
         
         #Display
-        self._d_width = 800 
-        self._d_height = 800
         self._display = pygame.display.set_mode((self._d_width, self._d_height))
    
         #Load images
@@ -177,11 +178,26 @@ class PygameIO(MinesweeperIO):
             curr_event = self._events.pop(0)
             if curr_event.type == pygame.QUIT:
                 return (self.ACTIONS.QUIT, False)
+            elif curr_event.type == pygame.MOUSEBUTTONDOWN:
+                pos = curr_event.pos
+                grid_pos = [pos[0] * g_width // self._d_width, pos[1] * g_height //self._d_height]
+                if curr_event.button == 3:
+                    return (self.ACTIONS.SHOW, grid_pos)
+                elif curr_event.button == 1:
+                    return (self.ACTIONS.FLAG, grid_pos)
 
         return (self.ACTIONS.NOTHING, False)
     
     def get_user_dimensions(self):
-        pass
+        dimensions = prompt(self._display, "Introduzca dimensiones del tablero en formato [ancho]x[alto]", pygame.Rect(0, 0, self._d_width, 100))
+        while True:
+            try:    
+                width, height = (int(x) for x in dimensions.split("x"))
+            except:
+                dimensions = prompt(self._display, "Ha introducido valores no válidos, intentelo de nuevo", pygame.Rec(0, 0, self._d_width, height=100))
+            else: break
+            
+        return (width, height)
     
     def get_user_hardness(self):
         pass
@@ -365,7 +381,7 @@ class MinesweeperGrid(object):
         Output:
             The cell, an instance of the Cell class
         """     
-        if not coords_are_valid(x, y): raise OutOfGridException(x, y)
+        if not self.coords_are_valid(x, y): raise OutOfGridException(x, y)
 
         return self._cells[y * self.height + x]
 
@@ -379,7 +395,7 @@ class MinesweeperGrid(object):
         
         Output: None
         """
-        if not coords_are_valid(x, y): raise OutOfGridException(x, y)
+        if not self.coords_are_valid(x, y): raise OutOfGridException(x, y)
 
         self._cells[y * self.height + x] = cell
 
@@ -534,11 +550,11 @@ class MinesweeperGame:
             coords - a 2-tuple with the coordinates where do the action
         Output: None
         """
-        if action == io_controller.ACTIONS.SHOW:
+        if action == self.io_controller.ACTIONS.SHOW:
             self.grid.flag_cell(*coords)
-        elif action == io_controller.ACTIONS.FLAG:
+        elif action == self.io_controller.ACTIONS.FLAG:
             self.grid.clear_from(*coords)
-        elif action == io_controller.ACTIONS.SHOW:
+        elif action == self.io_controller.ACTIONS.SHOW:
             self.io_controller.destroy()
 
     def play_until_end(self):

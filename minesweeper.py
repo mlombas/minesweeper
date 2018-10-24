@@ -3,13 +3,8 @@ from math import ceil
 from random import randint
 
 io = PygameIO()
-grid = MinesweeperGrid.gen_random(10, 10, 20)
-for x in range(10):
-    for y in range(10):
-        n = randint(0, 2)
-        if n == 0: grid.show_cell(x, y)
-        elif n == 1: grid.flag_cell(x, y)
-
+width, height = io.get_user_dimensions()
+grid = MinesweeperGrid.gen_random(width, height, width * height * 0.05)
 MinesweeperGame(grid, io).play_until_end()
 
 """hardness_levels = {
