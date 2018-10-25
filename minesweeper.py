@@ -4,7 +4,7 @@ from random import randint
 
 io = PygameIO()
 width, height = io.get_user_dimensions()
-grid = MinesweeperGrid.gen_random(width, height, width * height * 0.05)
+grid = MinesweeperGrid.gen_random(width, height, width * height * 0.5)
 MinesweeperGame(grid, io).play_until_end()
 
 """hardness_levels = {

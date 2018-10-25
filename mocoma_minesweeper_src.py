@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from collections import namedtuple
 from random import randint
-from mocoma_input import prompt
+from pygame_helpers.mocoma_input import prompt
 import pygame, sys
 from pygame.locals import *
 
@@ -180,7 +180,7 @@ class PygameIO(MinesweeperIO):
                 return (self.ACTIONS.QUIT, False)
             elif curr_event.type == pygame.MOUSEBUTTONDOWN:
                 pos = curr_event.pos
-                grid_pos = [pos[0] * g_width // self._d_width, pos[1] * g_height //self._d_height]
+                grid_pos = [round(pos[0] * g_width / self._d_width), round(pos[1] * g_height / self._d_height)]
                 if curr_event.button == 3:
                     return (self.ACTIONS.SHOW, grid_pos)
                 elif curr_event.button == 1:
