@@ -1,0 +1,3 @@
+[submodule "pygame_helpers"]
+    path = "pygame_helpers"
+    url = "http://www.github.com/mocomaminecraft/pygame_helpers.git"
