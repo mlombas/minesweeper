@@ -8,7 +8,8 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from collections import namedtuple
 from random import randint
-from mocoma_input import prompt
+from pygame_helpers.mocoma_input import prompt
+from pygame_helpers.mocoma_print import print_bounded
 import pygame, sys
 from pygame.locals import *
 
@@ -143,7 +144,15 @@ class PygameIO(MinesweeperIO):
         pygame.quit()
     
     def print_end(self, is_win):
-        pass
+        if not pygame.font.get_init(): pygame.font.init()
+        
+        #TODO make this display centered text
+        #print_bounded(self._display, "game over", pygame.Rect(0, self._d_height * 0.2, self._d_width, self._d_height))
+        while True:
+            pygame.event.get() #Discard all past events
+            evt = pygame.event.wait()
+            if evt.type in [pygame.KEYUP, pygame.MOUSEBUTTONUP, pygame.QUIT]:
+                  break
 
     def show_grid(self, grid):
         img_width = int(self._d_width / grid.width)
@@ -554,7 +563,7 @@ class MinesweeperGame:
             self.grid.flag_cell(*coords)
         elif action == self.io_controller.ACTIONS.FLAG:
             self.grid.clear_from(*coords)
-        elif action == self.io_controller.ACTIONS.SHOW:
+        elif action == self.io_controller.ACTIONS.QUIT:
             self.io_controller.destroy()
 
     def play_until_end(self):
@@ -571,5 +580,6 @@ class MinesweeperGame:
                                 self.grid.height
                             )
             self.do_action(action, coords)
+            self.io_controller.print_end(self.grid.is_win())
         
     
