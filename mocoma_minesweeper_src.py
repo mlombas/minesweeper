@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from collections import namedtuple
 from random import randint
+from pygame_helpers.util import SurfaceCodex, wait_until_event
 from pygame_helpers.GUI_input import prompt
 from pygame_helpers.text import print_bounded
 import pygame, sys
@@ -134,11 +135,12 @@ class PygameIO(MinesweeperIO):
         self._display = pygame.display.set_mode((self._d_width, self._d_height))
    
         #Load images
-        self.hidden_src = pygame.image.load(hidden_src)
-        self.flagged_src = pygame.image.load(flagged_src)
-        self.mine_src = pygame.image.load(mine_src)
-        self.shown_bg_src = pygame.image.load(empty_src)
-        self.nums_src = [pygame.image.load(num_src) for num_src in number_range_src]
+        SurfaceCodex.load_surface(hidden_src, "hidden")
+        SurfaceCodex.load_surface(flagged_src, "flagged")
+        SurfaceCodex.load_surface(mine_src, "mine")
+        SurfaceCodex.load_surface(empty_src, "empty")
+        for i, num_src in enumerate(number_range_src):
+            SurfaceCodex.load_surface(num_src, "num" + str(i + 1))
      
     def destroy(self):
         pygame.quit()
@@ -146,22 +148,18 @@ class PygameIO(MinesweeperIO):
     def print_end(self, is_win):
         if not pygame.font.get_init(): pygame.font.init()
         
-        #TODO make this display centered text
         print_bounded(self._display, "game over", pygame.Rect(0, 0, self._d_width, self._d_height))
-        while True:
-            pygame.event.get() #Discard all past events
-            evt = pygame.event.wait()
-            if evt.type in [pygame.KEYUP, pygame.MOUSEBUTTONUP, pygame.QUIT]:
-                  break
+        wait_until_event(pygame.KEYUP, pygame.MOUSEBUTTONUP, pygame.QUIT)
 
     def show_grid(self, grid):
         img_width = int(self._d_width / grid.width)
         img_height = int(self._d_height / grid.height)
-        hidden_bg_img = pygame.transform.scale(self.hidden_src, (img_width, img_height)) #Scale images to fit in screen
-        flagged_img = pygame.transform.scale(self.flagged_src, (img_width, img_height))
-        mine_img = pygame.transform.scale(self.mine_src, (img_width, img_height))
-        shown_bg_img = pygame.transform.scale(self.shown_bg_src, (img_width, img_height))
-        nums_imgs = [pygame.transform.scale(num, (img_width, img_height)) for num in self.nums_src]
+        dimensions = (img_width, img_height)
+        hidden_bg_img = SurfaceCodex.get_surface("hidden", dimensions)
+        flagged_img = SurfaceCodex.get_surface("flagged", dimensions)
+        mine_img = SurfaceCodex.get_surface("mine", dimensions)
+        shown_bg_img = SurfaceCodex.get_surface("empty", dimensions)
+        nums_imgs = [SurfaceCodex.get_surface(f"num{n+1}", dimensions) for n in range(8)]
 
         for x in range(grid.width):
             for y in range(grid.height):
@@ -182,18 +180,17 @@ class PygameIO(MinesweeperIO):
         pygame.display.update()
 
     def get_grid_input(self, g_width, g_height):
-        self._events += list(pygame.event.get())
-        if self._events:
-            curr_event = self._events.pop(0)
-            if curr_event.type == pygame.QUIT:
-                return (self.ACTIONS.QUIT, False)
-            elif curr_event.type == pygame.MOUSEBUTTONDOWN:
-                pos = curr_event.pos
-                grid_pos = [round(pos[0] * g_width / self._d_width), round(pos[1] * g_height / self._d_height)]
-                if curr_event.button == 3:
-                    return (self.ACTIONS.SHOW, grid_pos)
-                elif curr_event.button == 1:
-                    return (self.ACTIONS.FLAG, grid_pos)
+        curr_event = pygame.event.wait()
+        print(curr_event.type, pygame.QUIT, pygame.MOUSEBUTTONDOWN)
+        if curr_event.type == pygame.QUIT:
+            return (self.ACTIONS.QUIT, False)
+        elif curr_event.type == pygame.MOUSEBUTTONDOWN:
+            pos = curr_event.pos
+            grid_pos = (round(pos[0] * g_width / self._d_width), round(pos[1] * g_height / self._d_height))
+            if curr_event.button == 3:
+                return (self.ACTIONS.FLAG, grid_pos)
+            elif curr_event.button == 1:
+                return (self.ACTIONS.SHOW, grid_pos)
 
         return (self.ACTIONS.NOTHING, False)
     
@@ -203,13 +200,17 @@ class PygameIO(MinesweeperIO):
             try:    
                 width, height = (int(x) for x in dimensions.split("x"))
             except:
-                dimensions = prompt(self._display, "Ha introducido valores no válidos, intentelo de nuevo", pygame.Rec(0, 0, self._d_width, height=100))
+                dimensions = prompt(self._display, "Ha introducido valores no válidos, intentelo de nuevo", pygame.Rect(0, 0, self._d_width, 100))
             else: break
             
         return (width, height)
     
-    def get_user_hardness(self):
-        pass
+    def get_user_hardness(self, hardness_levels):
+        p_message = "introduce tu nivel de dificultad:" + ", ".join(hardness_levels)
+        while True:
+            h_level = prompt(self._display, p_message, pygame.Rect(0, 0, self._d_width, 100))
+            if h_level in hardness_levels:
+                return h_level
 
 
 class ConsoleIO(MinesweeperIO):
@@ -560,9 +561,9 @@ class MinesweeperGame:
         Output: None
         """
         if action == self.io_controller.ACTIONS.SHOW:
-            self.grid.flag_cell(*coords)
-        elif action == self.io_controller.ACTIONS.FLAG:
             self.grid.clear_from(*coords)
+        elif action == self.io_controller.ACTIONS.FLAG:
+            self.grid.flag_cell(*coords)
         elif action == self.io_controller.ACTIONS.QUIT:
             self.io_controller.destroy()
 
@@ -575,10 +576,12 @@ class MinesweeperGame:
         """
         while not self.grid.ended():
             self.io_controller.show_grid(self.grid)
+            print("waiting")
             action, coords = self.io_controller.get_grid_input(
                                 self.grid.width,
                                 self.grid.height
                             )
+            print(action, coords)
             self.do_action(action, coords)
             self.io_controller.print_end(self.grid.is_win())
         
