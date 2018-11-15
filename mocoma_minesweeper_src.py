@@ -149,14 +149,16 @@ class PygameIO(MinesweeperIO):
         grid.show_all_mines()
         self.show_grid(grid)
 
+        text_rect = pygame.Rect(0, self._d_height/3, self._d_width, self._d_height/3) #only use the middle third of the screen to display the end text
+        pygame.draw.rect(self._display, (0, 0, 255), text_rect)
         if grid.is_win():
-            print_bounded(self._display, "ganaste boludo", pygame.Rect(0, 0, self._d_width, self._d_height), color=(0, 255, 0))
+            print_bounded(self._display, "ganaste boludo", text_rect, color=(0, 255, 0))
         else: 
-            print_bounded(self._display, "perdiste wey", pygame.Rect(0, 0, self._d_width, self._d_height), color=(255, 0, 0))
+            print_bounded(self._display, "perdiste wey", text_rect, color=(255, 0, 0))
 
         pygame.display.update()
 
-        wait_until_event()
+        wait_until_event(pygame.QUIT, pygame.KEYUP, pygame.MOUSEBUTTONUP)
 
     def show_grid(self, grid):
         img_width = int(self._d_width / grid.width)
