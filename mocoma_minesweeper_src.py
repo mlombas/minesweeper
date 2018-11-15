@@ -135,9 +135,9 @@ class PygameIO(MinesweeperIO):
         self._display = pygame.display.set_mode((self._d_width, self._d_height))
    
         #Load images
+        SurfaceCodex.load_surface(mine_src, "mine")
         SurfaceCodex.load_surface(hidden_src, "hidden")
         SurfaceCodex.load_surface(flagged_src, "flagged")
-        SurfaceCodex.load_surface(mine_src, "mine")
         SurfaceCodex.load_surface(empty_src, "empty")
         for i, num_src in enumerate(number_range_src):
             SurfaceCodex.load_surface(num_src, "num" + str(i + 1))
@@ -145,22 +145,30 @@ class PygameIO(MinesweeperIO):
     def destroy(self):
         pygame.quit()
     
-    def print_end(self, is_win):
-        if not pygame.font.get_init(): pygame.font.init()
-        
-        print_bounded(self._display, "game over", pygame.Rect(0, 0, self._d_width, self._d_height))
-        wait_until_event(pygame.KEYUP, pygame.MOUSEBUTTONUP, pygame.QUIT)
+    def print_end(self, grid):
+        grid.show_all_mines()
+        self.show_grid(grid)
+
+        if grid.is_win():
+            print_bounded(self._display, "ganaste boludo", pygame.Rect(0, 0, self._d_width, self._d_height), color=(0, 255, 0))
+        else: 
+            print_bounded(self._display, "perdiste wey", pygame.Rect(0, 0, self._d_width, self._d_height), color=(255, 0, 0))
+
+        pygame.display.update()
+
+        wait_until_event()
 
     def show_grid(self, grid):
         img_width = int(self._d_width / grid.width)
         img_height = int(self._d_height / grid.height)
         dimensions = (img_width, img_height)
+
         hidden_bg_img = SurfaceCodex.get_surface("hidden", dimensions)
         flagged_img = SurfaceCodex.get_surface("flagged", dimensions)
         mine_img = SurfaceCodex.get_surface("mine", dimensions)
         shown_bg_img = SurfaceCodex.get_surface("empty", dimensions)
         nums_imgs = [SurfaceCodex.get_surface(f"num{n+1}", dimensions) for n in range(8)]
-
+        
         for x in range(grid.width):
             for y in range(grid.height):
                cell = grid.get_cell(x, y)
@@ -180,13 +188,12 @@ class PygameIO(MinesweeperIO):
         pygame.display.update()
 
     def get_grid_input(self, g_width, g_height):
-        curr_event = pygame.event.wait()
-        print(curr_event.type, pygame.QUIT, pygame.MOUSEBUTTONDOWN)
+        curr_event = wait_until_event(pygame.QUIT, pygame.MOUSEBUTTONUP)
         if curr_event.type == pygame.QUIT:
             return (self.ACTIONS.QUIT, False)
-        elif curr_event.type == pygame.MOUSEBUTTONDOWN:
+        elif curr_event.type == pygame.MOUSEBUTTONUP:
             pos = curr_event.pos
-            grid_pos = (round(pos[0] * g_width / self._d_width), round(pos[1] * g_height / self._d_height))
+            grid_pos = (int(pos[0] * g_width / self._d_width), int(pos[1] * g_height / self._d_height))
             if curr_event.button == 3:
                 return (self.ACTIONS.FLAG, grid_pos)
             elif curr_event.button == 1:
@@ -206,11 +213,14 @@ class PygameIO(MinesweeperIO):
         return (width, height)
     
     def get_user_hardness(self, hardness_levels):
-        p_message = "introduce tu nivel de dificultad:" + ", ".join(hardness_levels)
+        p_message = ", ".join(hardness_levels)
         while True:
-            h_level = prompt(self._display, p_message, pygame.Rect(0, 0, self._d_width, 100))
+            h_level = prompt(self._display, "introduce tu nivel de dificultad:" + p_message, pygame.Rect(0, 0, self._d_width, 100))
             if h_level in hardness_levels:
                 return h_level
+            else:
+                h_level = prompt(self._display, "intentalo de nuevo: " + p_message, pygame.Rect(0, 0, self._d_width, 100))
+
 
 
 class ConsoleIO(MinesweeperIO):
@@ -387,13 +397,12 @@ class MinesweeperGrid(object):
         Input:
             x - the x coordinate of the cell
             y - the y coordinate of the cell
-        
         Output:
             The cell, an instance of the Cell class
         """     
         if not self.coords_are_valid(x, y): raise OutOfGridException(x, y)
 
-        return self._cells[y * self.height + x]
+        return self._cells[y * self.width + x]
 
     def set_cell(self, x, y, cell):
         """Sets a cell on the grid
@@ -406,8 +415,7 @@ class MinesweeperGrid(object):
         Output: None
         """
         if not self.coords_are_valid(x, y): raise OutOfGridException(x, y)
-
-        self._cells[y * self.height + x] = cell
+        self._cells[y * self.width + x] = cell
 
     def put_mine(self, x, y):
         """Puts a mine in the grid
@@ -434,6 +442,12 @@ class MinesweeperGrid(object):
         c = self.get_cell(x, y)
         new_c = self.Cell(c.has_mine, self.Cell.STATES.SHOWN)
         self.set_cell(x, y, new_c)
+    
+    def show_all_mines(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                if self.get_cell(x, y).has_mine:
+                    self.show_cell(x, y)
 
     def clear_from(self, x, y):
         """Recrusively shows all the surrounding cells that don't have bombs nearby
@@ -447,7 +461,6 @@ class MinesweeperGrid(object):
         self.show_cell(x, y)
         n_around = self.n_mines_around(x, y)
         if n_around == 0:
-            self.show_cell(x, y)
             coords_around = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
             for coord in coords_around:
                 if self.coords_are_valid(*coord) and self.get_cell(*coord).state == self.Cell.STATES.HIDDEN:
@@ -576,13 +589,9 @@ class MinesweeperGame:
         """
         while not self.grid.ended():
             self.io_controller.show_grid(self.grid)
-            print("waiting")
             action, coords = self.io_controller.get_grid_input(
                                 self.grid.width,
                                 self.grid.height
                             )
-            print(action, coords)
             self.do_action(action, coords)
-            self.io_controller.print_end(self.grid.is_win())
-        
     

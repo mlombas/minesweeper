@@ -18,5 +18,4 @@ grid = MinesweeperGrid.gen_random(width, height, n_mines)
 game = MinesweeperGame(grid, io)
 game.play_until_end()
 
-io.show_grid(grid)
-io.print_end(grid.is_win())
+io.print_end(grid)
