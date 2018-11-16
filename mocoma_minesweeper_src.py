@@ -120,8 +120,8 @@ class PygameIO(MinesweeperIO):
     """Implements the pygame framework to the minesweeper
     For more info see MinesweeperIO
     """
-    _d_width = 800 
-    _d_height = 800
+    _d_width = 600 
+    _d_height = 600
     def __init__(self,
                  hidden_src="assets/textures/tile_hidden.png",
                  empty_src="assets/textures/tile_shown.png",
@@ -146,16 +146,18 @@ class PygameIO(MinesweeperIO):
         pygame.quit()
     
     def print_end(self, grid):
-        grid.show_all_mines()
+        if grid.is_win():
+            ending_phrase = "ganaste boludo"
+            ending_color = (0, 255, 0)
+        else:
+            ending_phrase = "perdiste wey"
+            ending_color = (255, 0, 0)
+            grid.show_all_mines()
+        
         self.show_grid(grid)
-
         text_rect = pygame.Rect(0, self._d_height/3, self._d_width, self._d_height/3) #only use the middle third of the screen to display the end text
         pygame.draw.rect(self._display, (0, 0, 255), text_rect)
-        if grid.is_win():
-            print_bounded(self._display, "ganaste boludo", text_rect, color=(0, 255, 0))
-        else: 
-            print_bounded(self._display, "perdiste wey", text_rect, color=(255, 0, 0))
-
+        print_bounded(self._display, ending_phrase, text_rect, color=ending_color)
         pygame.display.update()
 
         wait_until_event(pygame.QUIT, pygame.KEYUP, pygame.MOUSEBUTTONUP)
@@ -446,6 +448,11 @@ class MinesweeperGrid(object):
         self.set_cell(x, y, new_c)
     
     def show_all_mines(self):
+        """Shows all mines in the grid
+
+        Input: None
+        Output: None
+        """
         for x in range(self.width):
             for y in range(self.height):
                 if self.get_cell(x, y).has_mine:
