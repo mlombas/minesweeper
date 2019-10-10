@@ -8,11 +8,11 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from collections import namedtuple
 from random import randint
-from pygame_helpers.util import SurfaceCodex, wait_until_event
-from pygame_helpers.GUI_input import prompt
-from pygame_helpers.text import print_bounded
-import pygame, sys
-from pygame.locals import *
+#from pygame_helpers.util import SurfaceCodex, wait_until_event
+#from pygame_helpers.GUI_input import prompt
+#from pygame_helpers.text import print_bounded
+#import pygame, sys
+#from pygame.locals import *
 
 class MinesweeperException(Exception):
     """Base exception for this module
@@ -33,6 +33,7 @@ class MinesweeperIO(ABC):
     far simpler.
     This class is abstract and thus can not be instantied
     """
+
     class ACTIONS(Enum):
         """Enum representing various actions for the get_grid_input() method
         """
@@ -225,12 +226,11 @@ class PygameIO(MinesweeperIO):
             else:
                 h_level = prompt(self._display, "intentalo de nuevo: " + p_message, pygame.Rect(0, 0, self._d_width, 100))
 
-
-
 class ConsoleIO(MinesweeperIO):
     """Provides a minesweeper inyterface for cmd
     See IO_Controller for more details
     """
+
     def __init__(self, hidden_src="■", empty_src=" ", number_range_src=[str(x + 1) for x in range(8)], flagged_src="!", mine_src="M"):
        super().__init__(hidden_src, empty_src, number_range_src, flagged_src, mine_src)
 
@@ -275,9 +275,9 @@ class ConsoleIO(MinesweeperIO):
                 if action not in ["M", "D", "Q"]:
                     print("Ha introducido una acción no válida, por favor intentelo de nuevo")
                 else:
-                    if action == "M": return (ACTIONS.FLAG, coords)
-                    if action == "D": return (ACTIONS.SHOW, coords)
-                    if action == "Q": return (ACTIONS.QUIT, False)
+                    if action == "M": return (super().ACTIONS.FLAG, coords)
+                    if action == "D": return (super().ACTIONS.SHOW, coords)
+                    if action == "Q": return (super().ACTIONS.QUIT, False)
 
     def get_user_dimensions(self):
         print("Introduzca las dimensiones del tablero en formato anchoxalto")

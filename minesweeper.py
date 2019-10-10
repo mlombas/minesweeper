@@ -2,7 +2,7 @@ from mocoma_minesweeper_src import ConsoleIO, MinesweeperGrid, MinesweeperGame, 
 from math import ceil
 from random import randint
 
-io = PygameIO()
+io = ConsoleIO()
 hardness_levels = {
     "facil": 0.07,
     "medio": 0.10,
